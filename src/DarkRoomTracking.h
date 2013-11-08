@@ -3,6 +3,7 @@
 #include "ofMain.h"
 
 class DarkRoomTracking : public ofBaseApp {
+
 	public:
 		void setup();
 		void update();
@@ -19,10 +20,14 @@ class DarkRoomTracking : public ofBaseApp {
 		void gotMessage(ofMessage msg);
 		
 		ofVideoGrabber 		vidGrabber;
-		unsigned char * 	videoProcessed;
-		ofTexture			videoTexture;
+		unsigned char * 	videoMonochrome;
+		unsigned char * 	videoBinarized;
+		ofTexture			videoTextureMonochrome;
+		ofTexture			videoTextureBinarized;
 		int 				camWidth;
 		int 				camHeight;
 		int					frameRate;
 		int					colorChannels;
+		float				threshold;
+		ofTrueTypeFont		font;
 };

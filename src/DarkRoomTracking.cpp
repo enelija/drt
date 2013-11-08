@@ -3,11 +3,15 @@
 //--------------------------------------------------------------
 void DarkRoomTracking::setup() {
 
+	// the DMK31AF03 camera is a monochrome camera, so 1 channel, color cameras use 3 channels
+	colorChannels	= 1;			
 	camWidth		= 512;			// 1024;			
 	camHeight		= 384;			// 768;
 	frameRate		= 30;
-	colorChannels	= 1;			// The DMK31AF03 camera is a monochrome camera
+	threshold		= 128;			// threshold for binarization
 	
+	font.loadFont("arial.ttf", 12);
+
     // we can now get back a list of devices. 
 	vector<ofVideoDevice> devices = vidGrabber.listDevices();
 	
@@ -24,9 +28,12 @@ void DarkRoomTracking::setup() {
 	vidGrabber.setDesiredFrameRate(frameRate);
 	vidGrabber.initGrabber(camWidth,camHeight);
 	
-	videoProcessed 	= new unsigned char[camWidth * camHeight * colorChannels];
-	videoTexture.allocate(camWidth, camHeight, GL_RGB);	
-	
+	videoMonochrome = new unsigned char[camWidth * camHeight];
+	videoBinarized = new unsigned char[camWidth * camHeight];
+		
+	videoTextureMonochrome.allocate(camWidth, camHeight, GL_LUMINANCE);
+	videoTextureBinarized.allocate(camWidth, camHeight, GL_LUMINANCE);
+
 	ofSetVerticalSync(true);
 }
 
@@ -41,9 +48,15 @@ void DarkRoomTracking::update() {
 		int totalPixels = camWidth * camHeight;
 		unsigned char * pixels = vidGrabber.getPixels();
 		for (int i = 0; i < totalPixels; ++i) {
-			videoProcessed[i] = pixels[i * colorChannels];
+			// for color cameras use the first color channel for now
+			videoMonochrome[i] = pixels[i * colorChannels];
+			if (pixels[i * colorChannels] > threshold)
+				videoBinarized[i] = 255;
+			else
+				videoBinarized[i] = 0;
 		}
-		videoTexture.loadData(videoProcessed, camWidth, camHeight, GL_LUMINANCE);
+		videoTextureMonochrome.loadData(videoMonochrome, camWidth, camHeight, GL_LUMINANCE);
+		videoTextureBinarized.loadData(videoBinarized, camWidth, camHeight, GL_LUMINANCE);
 	}
 }
 
@@ -52,24 +65,23 @@ void DarkRoomTracking::draw() {
 	
 	ofSetHexColor(0xffffff);
 	vidGrabber.draw(0, 0);
-	videoTexture.draw(camWidth, 0, camWidth,camHeight);
+	videoTextureMonochrome.draw(camWidth, 0, camWidth,camHeight);
+	videoTextureBinarized.draw(0, camHeight, camWidth,camHeight);
+	ofSetColor(255, 0, 0);
+	font.drawString("threshold: " + ofToString(threshold), 10, 2 * camHeight - 10);
 }
 
 //--------------------------------------------------------------
 void DarkRoomTracking::keyPressed(int key) {
 
-	// in fullscreen mode, on a pc at least, the 
-	// first time video settings the come up
-	// they come up *under* the fullscreen window
-	// use alt-tab to navigate to the settings
-	// window. we are working on a fix for this...
-	
-	// Video settings no longer works in 10.7
-	// You'll need to compile with the 10.6 SDK for this
-    // For Xcode 4.4 and greater, see this forum post on instructions on installing the SDK
-    // http://forum.openframeworks.cc/index.php?topic=10343        
 	if (key == 's' || key == 'S') {
 		vidGrabber.videoSettings();
+	} else if (key == OF_KEY_UP && threshold < 255) {
+		threshold += 1;
+		cout << "threshold: " << threshold << endl;
+	} else if (key == OF_KEY_DOWN && threshold > 0) {
+		threshold -= 1;
+		cout << "threshold: " << threshold << endl;
 	}
 }
 
