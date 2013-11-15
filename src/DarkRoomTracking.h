@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ofMain.h"
+#include "ofxOpenCv.h"
 
 class DarkRoomTracking : public ofBaseApp {
 
@@ -18,16 +19,25 @@ class DarkRoomTracking : public ofBaseApp {
 		void windowResized(int w, int h);
 		void dragEvent(ofDragInfo dragInfo);
 		void gotMessage(ofMessage msg);
-		
-		ofVideoGrabber 		vidGrabber;
-		unsigned char * 	videoMonochrome;
-		unsigned char * 	videoBinarized;
-		ofTexture			videoTextureMonochrome;
-		ofTexture			videoTextureBinarized;
-		int 				camWidth;
-		int 				camHeight;
-		int					frameRate;
-		int					colorChannels;
-		float				threshold;
-		ofTrueTypeFont		font;
+		void generateTestLedCentroids();
+		void updateTestLedCentroids();
+
+		ofVideoGrabber 			vidGrabber;
+		unsigned char * 		videoMonochrome;
+		unsigned char * 		videoBinarized;
+		ofTexture				videoTextureMonochrome;
+		ofTexture				videoTextureBinarized;
+		int 					camWidth;
+		int 					camHeight;
+		int						frameRate;
+		int						colorChannels;
+		float					threshold;
+		ofTrueTypeFont			font;
+
+		std::vector<ofPoint>	ledCentroids;
+		int						numOfLeds;
+		float					updateTestStep;
+
+		ofxCvContourFinder		contfinder;
+
 };

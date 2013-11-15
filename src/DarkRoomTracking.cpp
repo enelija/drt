@@ -4,11 +4,13 @@
 void DarkRoomTracking::setup() {
 
 	// the DMK31AF03 camera is a monochrome camera, so 1 channel, color cameras use 3 channels
-	colorChannels	= 1;			
+	colorChannels	= 3;			
 	camWidth		= 512;			// 1024;			
 	camHeight		= 384;			// 768;
 	frameRate		= 30;
 	threshold		= 128;			// threshold for binarization
+	numOfLeds		= 3;
+	updateTestStep	= 0.1f;
 	
 	font.loadFont("arial.ttf", 12);
 
@@ -35,6 +37,8 @@ void DarkRoomTracking::setup() {
 	videoTextureBinarized.allocate(camWidth, camHeight, GL_LUMINANCE);
 
 	ofSetVerticalSync(true);
+
+	generateTestLedCentroids();
 }
 
 //--------------------------------------------------------------
@@ -123,4 +127,14 @@ void DarkRoomTracking::gotMessage(ofMessage msg) {
 //--------------------------------------------------------------
 void DarkRoomTracking::dragEvent(ofDragInfo dragInfo) { 
 
+}
+
+void DarkRoomTracking::generateTestLedCentroids() {
+	for (int i = 0; i < numOfLeds; ++i)
+		ledCentroids.push_back(ofPoint(ofRandom(0.0f, 1.0f), ofRandom(0.0f, 1.0f)));
+}
+
+void DarkRoomTracking::updateTestLedCentroids() {
+	for (int i = ledCentroids.size() - 1; i > 0; --i)
+		ledCentroids[i] += ofRandom(-updateTestStep, updateTestStep);
 }
