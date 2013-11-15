@@ -4,8 +4,6 @@
 
 *.exp
 
-*.filters
-
 *.obj
 
 *.log
