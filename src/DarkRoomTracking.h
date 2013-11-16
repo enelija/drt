@@ -23,8 +23,8 @@ class DarkRoomTracking : public ofBaseApp {
 		void updateTestLedCentroids();
 
 		ofVideoGrabber 			vidGrabber;
-		unsigned char * 		videoMonochrome;
-		unsigned char * 		videoBinarized;
+		//unsigned char * 		videoMonochrome;
+		//unsigned char * 		videoBinarized;
 		ofTexture				videoTextureMonochrome;
 		ofTexture				videoTextureBinarized;
 		int 					camWidth;
@@ -38,6 +38,19 @@ class DarkRoomTracking : public ofBaseApp {
 		int						numOfLeds;
 		float					updateTestStep;
 
-		ofxCvContourFinder		contfinder;
+		bool					bLearnBakground;
+		ofxCvColorImage			colorImg;
+		ofxCvGrayscaleImage		grayImage;
+		ofxCvGrayscaleImage		gbImage;
+		ofxCvContourFinder		contourfinder;
+		std::vector<ofRectangle> bRect;
+		// Smallest potential blob size as measured in pixels
+		int						minArea; 
+		// Largest potential blob size as measured in pixel
+		int						maxArea; 
+		// Maximum numbers of blobs to consider
+		int						nConsidered; 
+
+
 
 };
