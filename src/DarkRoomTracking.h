@@ -2,6 +2,10 @@
 
 #include "ofMain.h"
 #include "ofxOpenCv.h"
+#include "ofxOsc.h"
+
+#define HOST "localhost"
+#define PORT 12346
 
 class DarkRoomTracking : public ofBaseApp {
 
@@ -10,6 +14,7 @@ class DarkRoomTracking : public ofBaseApp {
 		void update();
 		void draw();
 		
+		void sendPositionAndOrientation(float x, float y, float orientation);
 		void keyPressed(int key);
 		void keyReleased(int key);
 		void mouseMoved(int x, int y);
@@ -50,7 +55,10 @@ class DarkRoomTracking : public ofBaseApp {
 		int						maxArea; 
 		// Maximum numbers of blobs to consider
 		int						nConsidered; 
+		
+		float					testX;
+		float					testY;
+		float					testO;
 
-
-
+		ofxOscSender sender;
 };

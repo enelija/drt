@@ -44,6 +44,12 @@ void DarkRoomTracking::setup() {
 
 	ofSetVerticalSync(true);
 	generateTestLedCentroids();
+
+	sender.setup(HOST, PORT);
+
+	testX += ofRandom(-1.0, 1.0);
+	testY += ofRandom(-1.0, 1.0);
+	testO += ofRandom(0.0, 2 * PI);
 }
 
 //--------------------------------------------------------------
@@ -90,6 +96,10 @@ void DarkRoomTracking::update() {
 			bRect.push_back(blobs.boundingRect);
 		}
 
+		testX += ofRandom(-0.2, 0.2);
+		testY += ofRandom(-0.2, 0.2);
+		testO += ofRandom(-0.1, 0.1);
+		sendPositionAndOrientation(testX, testY, testO);
 	}
 }
 
@@ -128,6 +138,15 @@ void DarkRoomTracking::draw(){
 	//font.drawString("threshold: " + ofToString(threshold) +"\n", 10, 2 * camHeight - 10);
 	font.drawString("blobs: " + ofToString(contourfinder.nBlobs), 10, 2 * camHeight - 10);
 
+}
+
+void DarkRoomTracking::sendPositionAndOrientation(float x, float y, float orientation) {
+		ofxOscMessage m;
+		m.setAddress("/tracking");
+		m.addFloatArg(x);
+		m.addFloatArg(y);
+		m.addFloatArg(orientation);
+		sender.sendMessage(m);
 }
 
 //--------------------------------------------------------------
