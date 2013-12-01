@@ -70,6 +70,12 @@
     <ClCompile Include="..\..\..\addons\ofxOsc\libs\oscpack\src\ip\win32\UdpSocketWin.cpp">
       <Filter>addons\ofxOsc</Filter>
     </ClCompile>
+    <ClCompile Include="src\ledTracker.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\triangleFinder.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="src">
@@ -484,6 +490,12 @@
     </ClInclude>
     <ClInclude Include="..\..\..\addons\ofxOsc\libs\oscpack\src\ip\UdpSocket.h">
       <Filter>addons\ofxOsc</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ledTracker.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="src\triangleFinder.h">
+      <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
