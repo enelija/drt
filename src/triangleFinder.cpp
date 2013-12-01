@@ -1,39 +1,59 @@
 #include "triangleFinder.h"
 
 triangle::triangle(led *_ledA,led *_ledB,led *_ledC ){
-    ledA = _ledA;
-    ledB = _ledB;
-    ledC = _ledC;
+    float distAB,distBC,distCA;
+    distAB = (_ledA->position-_ledB->position).length();
+    distBC = (_ledB->position-_ledC->position).length();
+    distCA = (_ledC->position-_ledA->position).length();
+
+	// LED layout as described here: 
+	// http://www.interface.ufg.ac.at/vrprojectwiki/index.php/Electronics_and_garment#LEDs
+	// ledA connects the two longer distances
+	// ledB connects the longest and the shortest distance
+	// ledC connects the two shorter distances
+	if (distAB > distBC && distAB > distCA) {
+		ledA = _ledA;					
+		if (distCA > distBC) {
+			ledB = _ledB;				
+			ledC = _ledC;				
+		} else {
+			ledB = _ledC;
+			ledC = _ledB;
+		}
+	} else if (distBC > distAB && distBC > distCA) {
+		ledA = _ledB;					
+		if (distAB > distCA) {
+			ledB = _ledC;				
+			ledC = _ledA;				
+		} else {
+			ledB = _ledA;
+			ledC = _ledC;
+		}
+	} else {
+		ledA = _ledC;					
+		if (distBC > distAB) {
+			ledB = _ledA;				
+			ledC = _ledB;				
+		} else {
+			ledB = _ledB;
+			ledC = _ledA;
+		}
+	} 
 }
 
 ofPoint triangle::getPosition(){
-    ofPoint position;
-    position.x = (ledA->position.x+ledB->position.x+ledC->position.x)/3.0;
-    position.y = (ledA->position.y+ledB->position.y+ledC->position.y)/3.0;
-    return position;
+    
+    return ledA->position.getMiddle(ledB->position);
 }
 
 float triangle::getOrientation(){
-    float distAB,distBC,distCA;
-    ofPoint leftSide,rightSide;
-    float angle;
-    distAB = (ledA->position-ledB->position).length();
-    distBC = (ledB->position-ledC->position).length();
-    distCA = (ledC->position-ledA->position).length();
+    
+	ofPoint rightSide = ledB->position;
+	ofPoint leftSide = ledA->position;
 
-    if(distAB<distBC && distAB<distCA){
-        rightSide   = ledA->position.getMiddle(ledB->position);
-        leftSide    = ledC->position;
-    }else if(distBC<distAB && distBC<distCA){
-        rightSide   = ledB->position.getMiddle(ledC->position);
-        leftSide    = ledA->position;
-    }else if(distCA<distAB && distCA<distBC){
-        rightSide   = ledC->position.getMiddle(ledA->position);
-        leftSide    = ledB->position;
-    }
-
-    angle = -atan2(leftSide.x-rightSide.x,leftSide.y-rightSide.y);
-    return angle;
+	// Shift result by PI to be in range [0, 2*PI] as requested here:
+	// http://www.interface.ufg.ac.at/vrprojectwiki/index.php/Communication_Protocol#DARK_ROOM_.E2.86.92_CAVE
+	return atan2(leftSide.y-rightSide.y, leftSide.x-rightSide.x) + PI;
 }
 
 void triangle::draw(){
@@ -47,7 +67,6 @@ void triangle::draw(){
     ofEndShape(OF_CLOSE);
 
     //orientation vector
-
     ofPoint position  = this->getPosition();
     float orientationAngle = this->getOrientation();
     ofVec2f orientationVector;
@@ -60,7 +79,6 @@ void triangle::draw(){
     ofEndShape();
 
     ofPopStyle();
-
 }
 
 triangleFinder::triangleFinder()
@@ -76,6 +94,7 @@ void triangleFinder::findTriangles()
     set<led*>::iterator led_iterator;
     set<triangle*> foundTriangles;
     set<triangle*>::iterator triangle_iterator;
+
 
     for (triangle_iterator = triangles.begin(); triangle_iterator != triangles.end(); triangle_iterator++){
         //check if triangle is still valid
@@ -129,12 +148,11 @@ void triangleFinder::draw( float x, float y, float w, float h ) {
     float _height = lt->height;
     set<triangle*>::iterator triangle_iterator;
 
-
     if( _width != 0 ) { scalex = w/_width; } else { scalex = 1.0f; }
     if( _height != 0 ) { scaley = h/_height; } else { scaley = 1.0f; }
 
     ofPushStyle();
-        // ---------------------------- draw the bounding rectangle
+    // ---------------------------- draw the bounding rectangle
     ofSetHexColor(0xDD00CC);
     glPushMatrix();
     glTranslatef( x, y, 0.0 );

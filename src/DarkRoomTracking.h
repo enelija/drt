@@ -11,7 +11,7 @@
 							// otherwise, we'll use a movie file
 
 #define HOST "localhost"
-#define PORT 12346
+#define PORT 12347
 
 class DarkRoomTracking : public ofBaseApp {
 
@@ -69,5 +69,5 @@ class DarkRoomTracking : public ofBaseApp {
         ledTracker          lt;
         triangleFinder      tf;
 		
-		ofxOscSender sender;
+		ofxOscSender* sender;
 };

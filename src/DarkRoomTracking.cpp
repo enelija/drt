@@ -16,6 +16,9 @@ void DarkRoomTracking::setup(){
     filepaths.push_back("twins.mp4");
     filepaths.push_back("twins_flicker.mp4");
 
+	sender = new ofxOscSender();
+	sender->setup(HOST, PORT);
+
     filepath_iterator = filepaths.begin();
 	#ifdef _USE_LIVE_VIDEO
 		vector<ofVideoDevice> devices = vidGrabber.listDevices();
@@ -46,7 +49,6 @@ void DarkRoomTracking::setup(){
     lt.setContourFinder(contourFinder);
     tf.setLedTracker(lt);
 	bLearnBakground = false;
-	threshold = 80;
 }
 
 //--------------------------------------------------------------
@@ -83,14 +85,18 @@ void DarkRoomTracking::update(){
 		//grayDiff.threshold(threshold);
 		grayImage.threshold(threshold);
 
-		// find contours which are between the size of 20 pixels and 1/3 the w*h pixels.
+		// find contours which are between the size of 20 pixels and 1/16 the w*h pixels.
 		// also, find holes is set to true so we will get interior contours as well....
 		//contourFinder.findContours(grayDiff, minArea, maxArea, nConsidered, false);	// find holes
 		contourFinder.findContours(grayImage, minArea, maxArea, nConsidered, false);	// find holes
 		lt.trackLeds();
 		tf.findTriangles();
+		
+		set<triangle*>::iterator it = tf.triangles.begin();
+		if (tf.triangles.size() == 1)
+			sendPositionAndOrientation((*it)->getPosition().x, (*it)->getPosition().x, (*it)->getOrientation());
+		// TODO: choose the "best" triangle fit since we only want a single triangle
 	}
-
 }
 
 //--------------------------------------------------------------
@@ -142,7 +148,8 @@ void DarkRoomTracking::draw(){
     for (set<triangle*>::iterator triangle_iterator = tf.triangles.begin(); triangle_iterator != tf.triangles.end(); triangle_iterator++){
          trianglesStr   <<"triangle id:"<<(*triangle_iterator)->id
                         <<" orientation:"<<fixed<<(*triangle_iterator)->getOrientation()
-                        <<"position: x:"<<fixed<<(*triangle_iterator)->getPosition().x
+                        <<" (rad) / "<<fixed<<(*triangle_iterator)->getOrientation()*180.0f/PI
+                        <<" (degree) position: x:"<<fixed<<(*triangle_iterator)->getPosition().x
                         <<", y:"<<fixed<<(*triangle_iterator)->getPosition().y<<endl;
 
     }
@@ -184,7 +191,7 @@ void DarkRoomTracking::sendPositionAndOrientation(float x, float y, float orient
 		m.addFloatArg(x);
 		m.addFloatArg(y);
 		m.addFloatArg(orientation);
-		sender.sendMessage(m);
+		sender->sendMessage(m);
 }
 
 //--------------------------------------------------------------
