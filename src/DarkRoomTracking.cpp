@@ -6,11 +6,15 @@ void DarkRoomTracking::setup(){
 	camWidth		= 320;			// 1024;			
 	camHeight		= 240;			// 768;
 	frameRate		= 30;
+	#ifdef _USE_LIVE_VIDEO
 	threshold		= 240;
 	minArea			= 20; 
+	#else
+	threshold		= 80;
+	minArea			= 1; 
+	#endif
 	maxArea			= camWidth * camHeight / 16;
 	nConsidered		= 10; 
-
     filepaths.push_back("single.mp4");
     filepaths.push_back("single_flicker.mp4");
     filepaths.push_back("twins.mp4");

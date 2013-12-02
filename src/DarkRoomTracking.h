@@ -7,7 +7,7 @@
 #include "ledTracker.h"
 #include "triangleFinder.h"
 
-#define _USE_LIVE_VIDEO		// uncomment this to use a live camera
+//#define _USE_LIVE_VIDEO		// uncomment this to use a live camera
 							// otherwise, we'll use a movie file
 
 #define HOST "localhost"
