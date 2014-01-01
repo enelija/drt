@@ -2,238 +2,325 @@
 
 //--------------------------------------------------------------
 void DarkRoomTracking::setup(){
+
+	ofSetLogLevel(OF_LOG_VERBOSE);
 	
-	camWidth		= 320;			// 1024;			
-	camHeight		= 240;			// 768;
-	frameRate		= 30;
-	#ifdef _USE_LIVE_VIDEO
-	threshold		= 240;
-	minArea			= 20; 
-	#else
-	threshold		= 80;
-	minArea			= 1; 
-	#endif
-	maxArea			= camWidth * camHeight / 16;
-	nConsidered		= 10; 
-    filepaths.push_back("single.mp4");
-    filepaths.push_back("single_flicker.mp4");
-    filepaths.push_back("twins.mp4");
-    filepaths.push_back("twins_flicker.mp4");
-
-	sender = new ofxOscSender();
-	sender->setup(HOST, PORT);
-
-    filepath_iterator = filepaths.begin();
-	#ifdef _USE_LIVE_VIDEO
-		vector<ofVideoDevice> devices = vidGrabber.listDevices();
-		for(int i = 0; i < devices.size(); ++i) {
-			cout << devices[i].id << ": " << devices[i].deviceName; 
-			if (devices[i].bAvailable) {
-				cout << endl;
-			} else {
-				cout << " - unavailable " << endl; 
-			}
-		}
+	// enable depth->video image calibration
+	kinect.setRegistration(true);
     
-        vidGrabber.setVerbose(true);
-		vidGrabber.setDeviceID(0);
-		vidGrabber.setDesiredFrameRate(frameRate);
-		vidGrabber.initGrabber(camWidth,camHeight);
-	#else
-        vidPlayer.loadMovie(*filepath_iterator);
-        vidPlayer.setLoopState(OF_LOOP_NORMAL);
-        vidPlayer.play();
-	#endif
-
-    colorImg.allocate(320,240);
-	grayImage.allocate(320,240);
-	grayBg.allocate(320,240);
-	grayDiff.allocate(320,240);
-
-    lt.setContourFinder(contourFinder);
-    tf.setLedTracker(lt);
-	bLearnBakground = false;
+	kinect.init();
+	//kinect.init(true); // shows infrared instead of RGB video image
+	//kinect.init(false, false); // disable video image (faster fps)
+	
+	kinect.open();		// opens first available kinect
+	//kinect.open(1);	// open a kinect by id, starting with 0 (sorted by serial # lexicographically))
+	//kinect.open("A00362A08602047A");	// open a kinect using it's unique serial #
+	
+	// print the intrinsic IR sensor values
+	if(kinect.isConnected()) {
+		ofLogNotice() << "sensor-emitter dist: " << kinect.getSensorEmitterDistance() << "cm";
+		ofLogNotice() << "sensor-camera dist:  " << kinect.getSensorCameraDistance() << "cm";
+		ofLogNotice() << "zero plane pixel size: " << kinect.getZeroPlanePixelSize() << "mm";
+		ofLogNotice() << "zero plane dist: " << kinect.getZeroPlaneDistance() << "mm";
+	}
+	
+	colorImg.allocate(kinect.width, kinect.height);
+	grayImage.allocate(kinect.width, kinect.height);
+	grayThreshNear.allocate(kinect.width, kinect.height);
+	grayThreshFar.allocate(kinect.width, kinect.height);
+	
+	nearThreshold = 230;
+	farThreshold = 70;
+	bThreshWithOpenCV = true;
+	
+	ofSetFrameRate(60);
+	
+	// zero the tilt on startup
+	angle = 0;
+	kinect.setCameraTiltAngle(angle);
+	
+	// start from the front
+	bDrawPointCloud = false;
 }
 
 //--------------------------------------------------------------
 void DarkRoomTracking::update(){
-	ofBackground(100,100,100);
-
-    bool bNewFrame = false;
-
-	#ifdef _USE_LIVE_VIDEO
-       vidGrabber.update();
-	   bNewFrame = vidGrabber.isFrameNew();
-    #else
-        vidPlayer.update();
-        bNewFrame = vidPlayer.isFrameNew();
-	#endif
-
-	if (bNewFrame){
-
-		#ifdef _USE_LIVE_VIDEO
-            colorImg.setFromPixels(vidGrabber.getPixels(), 320, 240);
-	    #else
-            colorImg.setFromPixels(vidPlayer.getPixels(), 320, 240);
-        #endif
-
-        grayImage = colorImg;
-		if (bLearnBakground == true){
-			grayBg = grayImage;		// the = sign copys the pixels from grayImage into grayBg (operator overloading)
-			bLearnBakground = false;
-		}
-
-		// take the abs value of the difference between background and incoming and then threshold:
-		//grayDiff.absDiff(grayBg, grayImage);				// working better without for LEDs
-		//grayDiff = grayImage;
-		//grayDiff.threshold(threshold);
-		grayImage.threshold(threshold);
-
-		// find contours which are between the size of 20 pixels and 1/16 the w*h pixels.
-		// also, find holes is set to true so we will get interior contours as well....
-		//contourFinder.findContours(grayDiff, minArea, maxArea, nConsidered, false);	// find holes
-		contourFinder.findContours(grayImage, minArea, maxArea, nConsidered, false);	// find holes
-		lt.trackLeds();
-		tf.findTriangles();
+	ofBackground(100, 100, 100);
+	
+	kinect.update();
+	
+	// there is a new frame and we are connected
+	if(kinect.isFrameNew()) {
 		
-		set<triangle*>::iterator it = tf.triangles.begin();
-		if (tf.triangles.size() == 1)
-			sendPositionAndOrientation((*it)->getPosition().x, (*it)->getPosition().x, (*it)->getOrientation());
-		// TODO: choose the "best" triangle fit since we only want a single triangle
+		// load grayscale depth image from the kinect source
+		grayImage.setFromPixels(kinect.getDepthPixels(), kinect.width, kinect.height);
+		
+		// we do two thresholds - one for the far plane and one for the near plane
+		// we then do a cvAnd to get the pixels which are a union of the two thresholds
+		if(bThreshWithOpenCV) {
+			grayThreshNear = grayImage;
+			grayThreshFar = grayImage;
+			grayThreshNear.threshold(nearThreshold, true);
+			grayThreshFar.threshold(farThreshold);
+			cvAnd(grayThreshNear.getCvImage(), grayThreshFar.getCvImage(), grayImage.getCvImage(), NULL);
+		} else {
+			
+			// or we do it ourselves - show people how they can work with the pixels
+			unsigned char * pix = grayImage.getPixels();
+			
+			int numPixels = grayImage.getWidth() * grayImage.getHeight();
+			for(int i = 0; i < numPixels; i++) {
+				if(pix[i] < nearThreshold && pix[i] > farThreshold) {
+					pix[i] = 255;
+				} else {
+					pix[i] = 0;
+				}
+			}
+		}
+		
+		// update the cv images
+		grayImage.flagImageChanged();
+		
+		// find contours which are between the size of 20 pixels and 1/3 the w*h pixels.
+		// also, find holes is set to true so we will get interior contours as well....
+		contourFinder.findContours(grayImage, 10, (kinect.width*kinect.height)/2, 20, false);
+
+		if(contourFinder.nBlobs > 0) {
+			position = contourFinder.blobs[0].boundingRect.getCenter();
+			cout << "coordinate: " << position << endl;
+			worldPosition = kinect.getWorldCoordinateAt(position.x,position.y);
+			//sendPosition(worldPosition.x,worldPosition.y);
+			sendPosition(position.x,position.y);
+		}
 	}
 }
 
 //--------------------------------------------------------------
 void DarkRoomTracking::draw(){
-
-	// draw the incoming, the grayscale, the bg and the thresholded difference
-	ofSetHexColor(0xffffff);
-	colorImg.draw(20,20);
-
-	// then draw the contours:
-    int contourX = 360;
-    int contourY = 20;
+	ofSetColor(255, 255, 255);
 	
-	ofFill();
-	ofSetHexColor(0x333333);
-	ofRect(contourX,contourY,320,240);
-	ofSetHexColor(0xffffff);
-
-	// or, instead we can draw each blob individually from the blobs vector,
-	// this is how to get access to them:
-    for (int i = 0; i < contourFinder.nBlobs; i++){
-        contourFinder.blobs[i].draw(contourX,contourY);
-
-		// draw over the centroid if the blob is a hole
-		ofSetColor(255);
-		if(contourFinder.blobs[i].hole){
-			ofDrawBitmapString("hole",
-				contourFinder.blobs[i].boundingRect.getCenter().x + contourX,
-				contourFinder.blobs[i].boundingRect.getCenter().y + contourY);
+	if(bDrawPointCloud) {
+		easyCam.begin();
+		drawPointCloud();
+		easyCam.end();
+	} else {
+		// draw from the live kinect
+		kinect.drawDepth(10, 10, 400, 300);
+		kinect.draw(420, 10, 400, 300);
+		
+		grayImage.draw(10, 320, 400, 300);
+		contourFinder.draw(10, 320, 400, 300);
+	    
+		if(contourFinder.nBlobs > 0)
+		{
+		ofPoint offset;
+		offset.x=420;
+		offset.y=10;
+		ofCircle(offset+position*(400.0/640.0),10);
+		//	kinect_px = position.x - 320.0;
+		//	kinect_py = position.y - 240.0;
+		worldPosition = kinect.getWorldCoordinateAt(position.x,position.y);
 		}
+	} //end of else
+
+	// draw instructions
+	ofSetColor(255, 255, 255);
+	stringstream reportStream;
+        
+    if(kinect.hasAccelControl()) {
+        reportStream << "accel is: " << ofToString(kinect.getMksAccel().x, 2) << " / "
+        << ofToString(kinect.getMksAccel().y, 2) << " / "
+        << ofToString(kinect.getMksAccel().z, 2) << endl;
+    } else {
+        reportStream << "Note: this is a newer Xbox Kinect or Kinect For Windows device," << endl
+		<< "motor / led / accel controls are not currently supported" << endl << endl;
     }
 
-    // we  draw the led tracker and the triangle finder in the same place
-	lt.draw(700,20,320,240);
-	tf.draw(700,20,320,240);
+	reportStream << "world Position: "<< worldPosition
+	<< "using opencv threshold = " << bThreshWithOpenCV <<" (press spacebar)" << endl
+	<< "set near threshold " << nearThreshold << " (press: + -)" << endl
+	<< "set far threshold " << farThreshold << " (press: < >) num blobs found " << contourFinder.nBlobs
+	<< ", fps: " << ofGetFrameRate() << endl
+	<< "press c to close the connection and o to open it again, connection is: " << kinect.isConnected() << endl;
 
-	// finally, a report:
-	ofSetHexColor(0xffffff);
-	stringstream reportStr;
-	reportStr << "press ' ' to switch video" << endl
-			  << "threshold " << threshold << " (press: +/-)" << endl
-			  << "video: "<< *filepath_iterator<<" fps: " << ofGetFrameRate()<<endl;
-
-	ofDrawBitmapString(reportStr.str(), 20, 350);
-
-    stringstream trianglesStr;
-    trianglesStr.precision(2);
-    trianglesStr << "num triangles found " << tf.triangles.size() << endl;
-    for (set<triangle*>::iterator triangle_iterator = tf.triangles.begin(); triangle_iterator != tf.triangles.end(); triangle_iterator++){
-         trianglesStr   <<"triangle id:"<<(*triangle_iterator)->id
-                        <<" orientation:"<<fixed<<(*triangle_iterator)->getOrientation()
-                        <<" (rad) / "<<fixed<<(*triangle_iterator)->getOrientation()*180.0f/PI
-                        <<" (degree) position: x:"<<fixed<<(*triangle_iterator)->getPosition().x
-                        <<", y:"<<fixed<<(*triangle_iterator)->getPosition().y<<endl;
-
+    if(kinect.hasCamTiltControl()) {
+    	reportStream << "press UP and DOWN to change the tilt angle: " << angle << " degrees" << endl
+        << "press 1-5 & 0 to change the led mode" << endl;
     }
-    ofDrawBitmapString(trianglesStr.str(), 400, 350);
+    
+	ofDrawBitmapString(reportStream.str(), 20, 652);
+} // end of draw()
+
+
+void DarkRoomTracking::drawPointCloud() {
+	int w = 640;
+	int h = 480;
+	ofMesh mesh;
+	mesh.setMode(OF_PRIMITIVE_POINTS);
+	int step = 2;
+	for(int y = 0; y < h; y += step) {
+		for(int x = 0; x < w; x += step) {
+			if(kinect.getDistanceAt(x, y) > 0) {
+				mesh.addColor(kinect.getColorAt(x,y));
+				mesh.addVertex(kinect.getWorldCoordinateAt(x, y));
+			}
+		}
+	}
+	glPointSize(3);
+	ofPushMatrix();
+	// the projected points are 'upside down' and 'backwards' 
+	ofScale(1, -1, -1);
+	ofTranslate(0, 0, -1000); // center the points a bit
+	ofEnableDepthTest();
+	mesh.drawVertices();
+	ofDisableDepthTest();
+	ofPopMatrix();
 }
 
 //--------------------------------------------------------------
-
-void DarkRoomTracking::keyPressed(int key){
-
-	switch (key){
-#ifndef _USE_LIVE_VIDEO
-		case ' ':
-            filepath_iterator++;
-            if(filepath_iterator==filepaths.end()){
-                filepath_iterator=filepaths.begin();
-            }
-            vidPlayer.stop();
-            vidPlayer.loadMovie(*filepath_iterator);
-            vidPlayer.play();
-			break;
+void DarkRoomTracking::exit() {
+	kinect.setCameraTiltAngle(0); // zero the tilt on exit
+	kinect.close();
+	
+#ifdef USE_TWO_KINECTS
+	kinect2.close();
 #endif
-		case '+': 
-		case OF_KEY_UP:
-			threshold ++;
-			if (threshold > 255) threshold = 255;
+}
+
+//--------------------------------------------------------------
+void DarkRoomTracking::keyPressed (int key) {
+	switch (key) {
+		case ' ':
+			bThreshWithOpenCV = !bThreshWithOpenCV;
 			break;
-		case '-': 
+			
+		case'p':
+			bDrawPointCloud = !bDrawPointCloud;
+			break;
+			
+		case '>':
+		case '.':
+			farThreshold ++;
+			if (farThreshold > 255) farThreshold = 255;
+			break;
+			
+		case '<':
+		case ',':
+			farThreshold --;
+			if (farThreshold < 0) farThreshold = 0;
+			break;
+			
+		case '+':
+		case '=':
+			nearThreshold ++;
+			if (nearThreshold > 255) nearThreshold = 255;
+			break;
+			
+		case '-':
+			nearThreshold --;
+			if (nearThreshold < 0) nearThreshold = 0;
+			break;
+			
+		case 'w':
+			kinect.enableDepthNearValueWhite(!kinect.isDepthNearValueWhite());
+			break;
+			
+		case 'o':
+			kinect.setCameraTiltAngle(angle); // go back to prev tilt
+			kinect.open();
+			break;
+			
+		case 'c':
+			kinect.setCameraTiltAngle(0); // zero the tilt
+			kinect.close();
+			break;
+			
+		case '1':
+			kinect.setLed(ofxKinect::LED_GREEN);
+			break;
+			
+		case '2':
+			kinect.setLed(ofxKinect::LED_YELLOW);
+			break;
+			
+		case '3':
+			kinect.setLed(ofxKinect::LED_RED);
+			break;
+			
+		case '4':
+			kinect.setLed(ofxKinect::LED_BLINK_GREEN);
+			break;
+			
+		case '5':
+			kinect.setLed(ofxKinect::LED_BLINK_YELLOW_RED);
+			break;
+			
+		case '0':
+			kinect.setLed(ofxKinect::LED_OFF);
+			break;
+			
+		case OF_KEY_UP:
+			angle++;
+			if(angle>30) angle=30;
+			kinect.setCameraTiltAngle(angle);
+			break;
+			
 		case OF_KEY_DOWN:
-			threshold --;
-			if (threshold < 0) threshold = 0;
+			angle--;
+			if(angle<-30) angle=-30;
+			kinect.setCameraTiltAngle(angle);
 			break;
 	}
 }
 
-void DarkRoomTracking::sendPositionAndOrientation(float x, float y, float orientation) {
+//--------------------------------------------------------------
+
+
+//--------------------------------------------------------------
+void DarkRoomTracking::sendPosition(float x, float y) {
 		ofxOscMessage m;
 		m.setAddress("/tracking");
 		m.addFloatArg(x);
 		m.addFloatArg(y);
-		m.addFloatArg(orientation);
 		sender->sendMessage(m);
 }
 
 //--------------------------------------------------------------
-void DarkRoomTracking::keyReleased(int key) {
+void DarkRoomTracking::keyReleased(int key){
 
 }
 
 //--------------------------------------------------------------
-void DarkRoomTracking::mouseMoved(int x, int y) {
+void DarkRoomTracking::mouseMoved(int x, int y ){
 
 }
 
 //--------------------------------------------------------------
-void DarkRoomTracking::mouseDragged(int x, int y, int button) {
+void DarkRoomTracking::mouseDragged(int x, int y, int button){
 
 }
 
 //--------------------------------------------------------------
-void DarkRoomTracking::mousePressed(int x, int y, int button) {
+void DarkRoomTracking::mousePressed(int x, int y, int button){
 
 }
 
 //--------------------------------------------------------------
-void DarkRoomTracking::mouseReleased(int x, int y, int button) {
+void DarkRoomTracking::mouseReleased(int x, int y, int button){
 
 }
 
 //--------------------------------------------------------------
-void DarkRoomTracking::windowResized(int w, int h) {
+void DarkRoomTracking::windowResized(int w, int h){
 
 }
 
 //--------------------------------------------------------------
-void DarkRoomTracking::gotMessage(ofMessage msg) {
+void DarkRoomTracking::gotMessage(ofMessage msg){
 
 }
 
 //--------------------------------------------------------------
-void DarkRoomTracking::dragEvent(ofDragInfo dragInfo) { 
+void DarkRoomTracking::dragEvent(ofDragInfo dragInfo){ 
 
 }
