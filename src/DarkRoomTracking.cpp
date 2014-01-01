@@ -41,6 +41,9 @@ void DarkRoomTracking::setup(){
 	
 	// start from the front
 	bDrawPointCloud = false;
+
+	sender = new ofxOscSender();
+	sender->setup(HOST, PORT);
 }
 
 //--------------------------------------------------------------

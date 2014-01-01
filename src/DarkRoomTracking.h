@@ -7,6 +7,9 @@
 // uncomment this to read from two kinects simultaneously
 //#define USE_TWO_KINECTS
 
+#define HOST "localhost"
+#define PORT 12347
+
 class DarkRoomTracking : public ofBaseApp {
 
 	public:
