@@ -1,49 +1,24 @@
 #include "triangleFinder.h"
 
 triangle::triangle(led *_ledA,led *_ledB,led *_ledC ){
-    float distAB,distBC,distCA;
-    distAB = (_ledA->position-_ledB->position).length();
-    distBC = (_ledB->position-_ledC->position).length();
-    distCA = (_ledC->position-_ledA->position).length();
+  ledA = _ledA;
+  ledB = _ledB;
+  ledC = _ledC;
+}
 
-	// LED layout as described here: 
-	// http://www.interface.ufg.ac.at/vrprojectwiki/index.php/Electronics_and_garment#LEDs
-	// ledA connects the two longer distances
-	// ledB connects the longest and the shortest distance
-	// ledC connects the two shorter distances
-	if (distAB > distBC && distAB > distCA) {
-		ledA = _ledA;					
-		if (distCA > distBC) {
-			ledB = _ledB;				
-			ledC = _ledC;				
-		} else {
-			ledB = _ledC;
-			ledC = _ledB;
-		}
-	} else if (distBC > distAB && distBC > distCA) {
-		ledA = _ledB;					
-		if (distAB > distCA) {
-			ledB = _ledC;				
-			ledC = _ledA;				
-		} else {
-			ledB = _ledA;
-			ledC = _ledC;
-		}
-	} else {
-		ledA = _ledC;					
-		if (distBC > distAB) {
-			ledB = _ledA;				
-			ledC = _ledB;				
-		} else {
-			ledB = _ledB;
-			ledC = _ledA;
-		}
-	} 
+void triangle::orderLeds(){
+	//find the shortest
+	float distAB,distBC,distCA;
+    distAB = (ledA->position-ledB->position).length();
+    distBC = (ledB->position-ledC->position).length();
+    distCA = (ledC->position-ledA->position).length();
+
+
 }
 
 ofPoint triangle::getPosition(){
     
-    return ledA->position.getMiddle(ledB->position);
+   return ledA->position.getMiddle(ledB->position);
 }
 
 float triangle::getOrientation(){
