@@ -1,9 +1,10 @@
 #pragma once
 
-#include "ofMain.h"
 #include "ofxOpenCv.h"
 #include "ofxKinect.h"
 #include "ofxOsc.h"
+#include "ofxGui.h"
+
 // uncomment this to read from two kinects simultaneously
 //#define USE_TWO_KINECTS
 
@@ -18,8 +19,6 @@ class DarkRoomTracking : public ofBaseApp {
 		void draw();
 		void exit();
 		
-		void drawPointCloud();
-
 		void keyPressed(int key);
 		void keyReleased(int key);
 		void mouseMoved(int x, int y );
@@ -29,29 +28,38 @@ class DarkRoomTracking : public ofBaseApp {
 		void windowResized(int w, int h);
 		void dragEvent(ofDragInfo dragInfo);
 		void gotMessage(ofMessage msg);
+		
+		void drawPointCloud();
 		void sendPosition(float x, float y);
 
 		ofxKinect kinect;
 	
 		ofxCvColorImage colorImg;
-		ofxCvGrayscaleImage grayImage; // grayscale depth image
-		ofxCvGrayscaleImage grayThreshNear; // the near thresholded image
-		ofxCvGrayscaleImage grayThreshFar; // the far thresholded image
+		
+		ofxCvGrayscaleImage grayImage;			// grayscale depth image
+		ofxCvGrayscaleImage backgroundImage;	// bg image, for substraction
+		ofxCvGrayscaleImage diffImage;			// difference image 
+
 		ofxCvContourFinder contourFinder;
+		
+		ofFbo fbo;
+		
+		ofPoint userPosition;
+							
+		ofxPanel gui;
+		ofParameterGroup parameters;
 
-		ofPoint position;
-		ofVec3f worldPosition;
+		ofParameter<float>  kinect_tilt;
+		ofParameter<int>    nearLimit;
+		ofParameter<int>    farLimit;
+		ofParameter<int>    threshold;
+		ofParameter<int>    minBlobArea;
+		ofParameter<int>    maxBlobArea;
+		ofParameter<bool>   useBackground;
+		
+		ofxButton grabBackground;
 
-		float kinect_px;
-		float kinect_py;
-	
-		bool bThreshWithOpenCV;
-		bool bDrawPointCloud;
-		int nearThreshold;
-		int farThreshold;
-		int angle;
-	
-		ofEasyCam easyCam;
-
+		ofPixels blobPixels;
+			
 		ofxOscSender* sender;
 };
