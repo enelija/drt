@@ -7,14 +7,8 @@ void DarkRoomTracking::setup() {
 	
 	// enable depth->video image calibration
 	kinect.setRegistration(true);
-    
 	kinect.init();
-	//kinect.init(true); // shows infrared instead of RGB video image
-	//kinect.init(false, false); // disable video image (faster fps)
-	
-	kinect.open();		// opens first available kinect
-	//kinect.open(1);	// open a kinect by id, starting with 0 (sorted by serial # lexicographically))
-	//kinect.open("A00362A08602047A");	// open a kinect using it's unique serial #
+	kinect.open();
 	
 	// print the intrinsic IR sensor values
 	if(kinect.isConnected()) {
@@ -24,12 +18,12 @@ void DarkRoomTracking::setup() {
 		ofLogNotice() << "zero plane dist: " << kinect.getZeroPlaneDistance() << "mm";
 	}
 	
+	// parameters
 	parameters.setName("Parameters");
 	kinect_tilt.set("Kinect Tilt",0,-30,30);
 	nearLimit.set("nearLimit",50,0,255);
 	farLimit.set("farLimit",150,0,255);
 	threshold.set("Threshold",10,0,255);
-
 	useBackground.set("Background Substraction",false);
 	minBlobArea.set("Minimum Blob Area",30,0,100);
 	maxBlobArea.set("Maximum Blob Area",90,0,100);
@@ -56,6 +50,7 @@ void DarkRoomTracking::setup() {
 	
     //inicialize frame buffer object
     fbo.allocate(kinect.width, kinect.height,GL_RGBA);
+
     //ofPixels, a data structure to access to the pixel data of an image
     blobPixels.allocate(kinect.width, kinect.height,OF_PIXELS_RGBA);
 		
@@ -149,7 +144,7 @@ void DarkRoomTracking::update() {
         userPosition /= pixelCounter;
 
 		// send position via OSC
-		sendPosition(userPosition.x, userPosition.y);
+		sendPosition(userPosition.x, userPosition.z);
 	}
 }
 
@@ -159,7 +154,7 @@ void DarkRoomTracking::draw(){
 	ofSetColor(255, 255, 255);
 
 	// draw from the live kinect
-	kinect.drawDepth(10, 10, 400, 300);
+    kinect.drawDepth(10, 10, 400, 300);
     backgroundImage.draw(420, 10, 200, 150);
 		
     diffImage.draw(420, 160, 200, 150);
@@ -175,6 +170,12 @@ void DarkRoomTracking::draw(){
     }
     gui.draw();
 } // end of draw()
+
+//--------------------------------------------------------------
+void DarkRoomTracking::exit() {
+	kinect.setCameraTiltAngle(0); // zero the tilt on exit
+	kinect.close();
+}
 
 //--------------------------------------------------------------
 void DarkRoomTracking::drawPointCloud() {
@@ -209,16 +210,6 @@ void DarkRoomTracking::sendPosition(float x, float y) {
 		m.addFloatArg(x);
 		m.addFloatArg(y);
 		sender->sendMessage(m);
-}
-
-//--------------------------------------------------------------
-void DarkRoomTracking::exit() {
-	kinect.setCameraTiltAngle(0); // zero the tilt on exit
-	kinect.close();
-	
-#ifdef USE_TWO_KINECTS
-	kinect2.close();
-#endif
 }
 
 //--------------------------------------------------------------

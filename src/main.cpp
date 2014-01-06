@@ -1,7 +1,6 @@
 #include "DarkRoomTracking.h"
 
 int main( ){
-	ofSetupOpenGL(1024,768,OF_WINDOW);
+	ofSetupOpenGL(WINDOW_WIDTH, WINDOW_HEIGHT, OF_WINDOW);
 	ofRunApp(new DarkRoomTracking());
-
 }

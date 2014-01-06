@@ -5,11 +5,10 @@
 #include "ofxOsc.h"
 #include "ofxGui.h"
 
-// uncomment this to read from two kinects simultaneously
-//#define USE_TWO_KINECTS
-
 #define HOST "localhost"
 #define PORT 12347
+#define WINDOW_WIDTH 1024
+#define WINDOW_HEIGHT 768
 
 class DarkRoomTracking : public ofBaseApp {
 
@@ -19,6 +18,9 @@ class DarkRoomTracking : public ofBaseApp {
 		void draw();
 		void exit();
 		
+		void drawPointCloud();
+		void sendPosition(float x, float y);
+
 		void keyPressed(int key);
 		void keyReleased(int key);
 		void mouseMoved(int x, int y );
@@ -29,8 +31,6 @@ class DarkRoomTracking : public ofBaseApp {
 		void dragEvent(ofDragInfo dragInfo);
 		void gotMessage(ofMessage msg);
 		
-		void drawPointCloud();
-		void sendPosition(float x, float y);
 
 		ofxKinect kinect;
 	
