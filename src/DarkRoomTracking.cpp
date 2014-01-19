@@ -142,10 +142,29 @@ void DarkRoomTracking::update() {
         //the user position is the mean of all the position that forms the blob
         //I think this method is better that just getting the distance of the centroid
         userPosition /= pixelCounter;
+		
+		// collect last n (AVG_SIZE) values in a deque to calculate the average in 
+		// order to make the movement more calm		
+		updateAvg(userPositions, userPosition);
 
 		// send position via OSC
 		sendPosition(userPosition.x, userPosition.z);
 	}
+}
+
+//--------------------------------------------------------------
+void DarkRoomTracking::updateAvg(std::deque<ofPoint>& positions, ofPoint& position) {
+	userPositions.push_back(userPosition);
+	if (userPositions.size() > AVG_SIZE)
+		userPositions.pop_front();
+
+	position = ofPoint(0.0, 0.0);
+	for (std::deque<ofPoint>::iterator it = positions.begin(); it != positions.end(); ++it) {
+		position.x += (*it).x;
+		position.z += (*it).z;
+	}
+	position.x /= (float) userPositions.size();
+	position.z /= (float) userPositions.size();
 }
 
 //--------------------------------------------------------------

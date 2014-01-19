@@ -5,10 +5,13 @@
 #include "ofxOsc.h"
 #include "ofxGui.h"
 
+#include <deque>
+
 #define HOST "localhost"
 #define PORT 12347
 #define WINDOW_WIDTH 1024
 #define WINDOW_HEIGHT 768
+#define AVG_SIZE 10
 
 class DarkRoomTracking : public ofBaseApp {
 
@@ -44,7 +47,10 @@ class DarkRoomTracking : public ofBaseApp {
 		
 		ofFbo fbo;
 		
+		int avgVals;
 		ofPoint userPosition;
+		std::deque<ofPoint> userPositions;
+		void updateAvg(std::deque<ofPoint>& positions, ofPoint& position);
 							
 		ofxPanel gui;
 		ofParameterGroup parameters;
