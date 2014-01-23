@@ -5,6 +5,8 @@ void DarkRoomTracking::setup() {
 
 	ofSetLogLevel(OF_LOG_VERBOSE);
 	
+	scale = 10.0f;
+
 	// enable depth->video image calibration
 	kinect.setRegistration(true);
 	kinect.init();
@@ -142,6 +144,10 @@ void DarkRoomTracking::update() {
         //the user position is the mean of all the position that forms the blob
         //I think this method is better that just getting the distance of the centroid
         userPosition /= pixelCounter;
+		userPosition.x = (userPosition.x / scale) * -1.0f;
+		userPosition.z = ((userPosition.z / scale) - 150.0f) * -1.0f;
+		
+		//ofLogNotice() << userPosition.x << " " << userPosition.y << " " << userPosition.z;
 		
 		// collect last n (AVG_SIZE) values in a deque to calculate the average in 
 		// order to make the movement more calm		
@@ -149,6 +155,7 @@ void DarkRoomTracking::update() {
 
 		// send position via OSC
 		sendPosition(userPosition.x, userPosition.z);
+
 	}
 }
 
@@ -185,7 +192,7 @@ void DarkRoomTracking::draw(){
     ofRect(10,320,350,350);
     ofLine(10+350/2.0,320+350,10+350/2.0,320+350-50);
     if(!(userPosition.x==0 && userPosition.y==0)){
-        ofCircle(ofMap(userPosition.x,-1500,1500,10,10+350),ofMap(userPosition.z,0,3000,320+350,320),0,20);
+        ofCircle(ofMap(userPosition.x,-150,150,10,10+350),ofMap(userPosition.z,-150,150,320+350,320),0,20);
     }
     gui.draw();
 } // end of draw()

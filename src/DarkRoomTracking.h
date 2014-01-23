@@ -46,6 +46,7 @@ class DarkRoomTracking : public ofBaseApp {
 		ofxCvContourFinder contourFinder;
 		
 		ofFbo fbo;
+		float scale;
 		
 		int avgVals;
 		ofPoint userPosition;
