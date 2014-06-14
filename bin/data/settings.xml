@@ -1,0 +1,9 @@
+<Parameters>
+	<Kinect_Tilt>1.2</Kinect_Tilt>
+	<nearLimit>50</nearLimit>
+	<farLimit>150</farLimit>
+	<Threshold>10</Threshold>
+	<Minimum_Blob_Area>30</Minimum_Blob_Area>
+	<Maximum_Blob_Area>90</Maximum_Blob_Area>
+	<Background_Substraction>0</Background_Substraction>
+</Parameters>

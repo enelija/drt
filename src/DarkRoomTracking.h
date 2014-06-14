@@ -11,7 +11,12 @@
 #define PORT 12347
 #define WINDOW_WIDTH 1024
 #define WINDOW_HEIGHT 768
+//number of values to calculate the avegare position
 #define AVG_SIZE 10
+//scale for maxBlob minBlob parameters each unit is 1/BLOB_SCALE
+#define BLOB_SCALE 1000.0
+//number of frames without detecting the user to consider the user is gone
+#define MAX_USER_FRAMES 10
 
 class DarkRoomTracking : public ofBaseApp {
 
@@ -48,7 +53,7 @@ class DarkRoomTracking : public ofBaseApp {
 		ofFbo fbo;
 		float scale;
 		
-		int avgVals;
+		int framesSinceUserDetected; //num of frames since the user was detected last time
 		ofPoint userPosition;
 		std::deque<ofPoint> userPositions;
 		void updateAvg(std::deque<ofPoint>& positions, ofPoint& position);
